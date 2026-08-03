@@ -1,0 +1,129 @@
+{
+  "globals": {
+    "itglue_base_url": "https://example.com/it-documentation"
+  },
+  "ui": {
+    "theme": "Ember Terminal"
+  },
+  "security": {
+    "allowed_host_suffixes": [
+      "example.com",
+      "itglue.com",
+      "screenconnect.com",
+      "duosecurity.com"
+    ]
+  },
+  "global_links": {
+    "new_user_sop_manual_cloud": "https://example.com/runbooks/new-user/manual-cloud",
+    "new_user_sop_directory_sync": "https://example.com/runbooks/new-user/directory-sync",
+    "new_user_sop_cloud_only": "https://example.com/runbooks/new-user/cloud-only",
+    "user_termination_sop": "https://example.com/runbooks/user-termination",
+    "duo_admin_portal": "https://admin.duosecurity.com/login"
+  },
+  "tasks": [
+    {
+      "id": "new_user",
+      "name": "New User",
+      "links": [
+        {
+          "label": "Documentation - User Lifecycle",
+          "template": "{itglue_user_create_term_url}"
+        },
+        {
+          "label": "Runbook - New User",
+          "template": "{new_user_sop_default_url}",
+          "optional": true
+        },
+        {
+          "label": "MFA Admin",
+          "template": "{duo_admin_url}",
+          "optional": true
+        },
+        {
+          "label": "Remote Support - Organization Machines",
+          "template": "{screenconnect_machines_url}"
+        }
+      ]
+    },
+    {
+      "id": "user_termination",
+      "name": "User Termination",
+      "links": [
+        {
+          "label": "Documentation - User Lifecycle",
+          "template": "{itglue_user_create_term_url}"
+        },
+        {
+          "label": "Runbook - User Termination",
+          "template": "{user_termination_sop_url}",
+          "optional": true
+        },
+        {
+          "label": "Documentation - Outage Handling",
+          "template": "{itglue_outage_handling_url}"
+        },
+        {
+          "label": "MFA Admin",
+          "template": "{duo_admin_url}",
+          "optional": true
+        },
+        {
+          "label": "Remote Support - Organization Machines",
+          "template": "{screenconnect_machines_url}"
+        }
+      ]
+    },
+    {
+      "id": "password_reset",
+      "name": "Password Reset",
+      "links": [
+        {
+          "label": "Remote Support - Organization Machines",
+          "template": "{screenconnect_machines_url}"
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "id": "example_manufacturing",
+      "name": "Example Manufacturing",
+      "vars": {
+        "client_slug": "example_manufacturing",
+        "itglue_org_id": "10001",
+        "itglue_user_create_term_url": "https://example.com/it-documentation/10001/user-lifecycle",
+        "itglue_outage_handling_url": "https://example.com/it-documentation/10001/outage-handling",
+        "itglue_password_primary_admin_id": "20001",
+        "itglue_password_office365_id": "20002",
+        "itglue_password_local_admin_id": "20003",
+        "itglue_password_duo_id": "20004",
+        "new_user_sop_default": "new_user_sop_directory_sync",
+        "screenconnect_machines_url": "https://example.com/remote-support/example-manufacturing",
+        "user_termination_sop": "user_termination_sop",
+        "extra_links": [
+          {
+            "label": "Asset Inventory",
+            "value": "https://example.com/assets/example-manufacturing",
+            "task_id": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "demo_organization",
+      "name": "Demo Organization",
+      "vars": {
+        "client_slug": "demo_organization",
+        "itglue_org_id": "10002",
+        "itglue_user_create_term_url": "https://example.com/it-documentation/10002/user-lifecycle",
+        "itglue_outage_handling_url": "https://example.com/it-documentation/10002/outage-handling",
+        "itglue_password_primary_admin_id": "21001",
+        "itglue_password_office365_id": "21002",
+        "itglue_password_local_admin_id": "21003",
+        "new_user_sop_default": "new_user_sop_cloud_only",
+        "screenconnect_machines_url": "https://example.com/remote-support/demo-organization",
+        "user_termination_sop": "user_termination_sop"
+      }
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+# Python environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local runtime state
+.runtime/
+*.log
+*.tmp
+*.bak
+*.backup
+
+# Private configuration and credentials
+config*.json
+!config.example.json
+default_config.json
+*.secrets.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+*.crt
+*.csv
+
+# Generated scripts, exports, and build artifacts
+build/
+dist/
+generated/
+output/
+*.exe
+*.msi
+*.msix
+*.zip
+*.spec
+
+# Local tooling and internal working notes
+.agents/
+.codex/
+.idea/
+.vscode/
+AGENTS.md
+REPORT.md
+docs/context/
+docs/local-run-location.md
+build_context_bootstrap.ps1
+**/_organization_notes.md
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

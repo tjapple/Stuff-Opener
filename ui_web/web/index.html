@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stuff Opener</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body data-theme="command">
+  <div class="app-shell">
+    <header class="top-shell">
+      <div class="brand-row">
+        <img class="logo" src="../../logo.png" alt="logo">
+        <div class="brand-copy">
+          <h1>Stuff-Opener</h1>
+          <p>Pick a client, choose the workflow, and launch the right tools.</p>
+        </div>
+        <button id="hotkey-button" class="hotkey-pill" type="button">Enable hotkey</button>
+      </div>
+      <nav class="nav-row" aria-label="Primary">
+        <button class="nav-button is-active" type="button" data-view-button="launcher">Launcher</button>
+        <button class="nav-button" type="button" data-view-button="script-builders">Script Builders</button>
+        <button class="nav-button" type="button" data-view-button="settings">Settings</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="view is-active" data-view="launcher">
+        <div class="launcher-grid">
+          <article class="panel step-card select-client">
+            <div class="accent"></div>
+            <h2>1. Select Client</h2>
+            <div class="autocomplete" data-autocomplete="client">
+              <input id="client-input" type="text" autocomplete="off" aria-label="Select Client">
+              <div class="suggestions" role="listbox" aria-label="Client suggestions"></div>
+            </div>
+            <p class="hint">Alt + C to focus</p>
+          </article>
+
+          <article class="panel step-card select-task">
+            <div class="accent"></div>
+            <h2>2. Select Task (Optional)</h2>
+            <div class="autocomplete" data-autocomplete="task">
+              <input id="task-input" type="text" autocomplete="off" aria-label="Select Task">
+              <div class="suggestions" role="listbox" aria-label="Task suggestions"></div>
+            </div>
+            <p class="hint">Leave blank to open saved passwords/extras only.</p>
+          </article>
+
+          <article class="panel step-card launch-card">
+            <div class="accent"></div>
+            <h2>3. Launch</h2>
+            <div class="button-row">
+              <button id="select-all" class="btn secondary" type="button">Select All</button>
+              <button id="clear-all" class="btn ghost" type="button">Clear All</button>
+            </div>
+            <p id="password-heading" class="launch-heading">Client Passwords and extra links:</p>
+            <div id="password-list" class="checklist" aria-label="Passwords and extra links"></div>
+            <div class="launch-buttons">
+              <button id="launch-all" class="btn primary" type="button">Launch tabs and selected items</button>
+              <button id="launch-selected" class="btn success" type="button">Launch selected items only</button>
+              <button id="open-config" class="btn ghost" type="button">Open Config</button>
+            </div>
+          </article>
+
+          <article class="panel links-panel">
+            <div class="accent"></div>
+            <div class="tabs" role="tablist" aria-label="Launcher lower panel">
+              <button class="tab is-active" type="button" data-tab="links">Constructed Links</button>
+              <button class="tab" type="button" data-tab="client">Add / Modify Client</button>
+            </div>
+            <section class="tab-panel is-active" data-tab-panel="links">
+              <table class="link-table">
+                <thead>
+                  <tr>
+                    <th>Label</th>
+                    <th>URL</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="links-body"></tbody>
+              </table>
+            </section>
+            <section class="tab-panel" data-tab-panel="client">
+              <div class="client-form-grid">
+                <label>Client Name
+                  <div class="autocomplete" data-autocomplete="client-form">
+                    <input id="client-form-name" type="text" autocomplete="off">
+                    <div class="suggestions" role="listbox" aria-label="Client form suggestions"></div>
+                  </div>
+                </label>
+                <label>Client ID (Auto)<output id="client-form-id"></output></label>
+                <label>Client Slug (Auto)<output id="client-form-slug"></output></label>
+                <label>ITGlue Org ID<input id="client-form-itglue-org" type="text"></label>
+                <label>ITGlue User Create/Term URL<input id="client-form-user-create-term" type="text"></label>
+                <label>ITGlue Outage Handling URL<input id="client-form-outage" type="text"></label>
+                <label>Password ID - Primary Admin<input id="client-form-primary-admin" type="text"></label>
+                <label>Password ID - Office365<input id="client-form-office365" type="text"></label>
+                <label>Password ID - Local Admin<input id="client-form-localadmin" type="text"></label>
+                <label>Password ID - DUO<input id="client-form-duo" type="text"></label>
+                <label>New User SOP Key<select id="client-form-sop"></select></label>
+                <label>ScreenConnect URL<input id="client-form-screenconnect" type="text"></label>
+              </div>
+              <div class="form-actions">
+                <button id="save-client" class="btn success" type="button">Save Client</button>
+                <button id="clear-client-form" class="btn ghost" type="button">Clear Form</button>
+              </div>
+              <details class="extra-fields">
+                <summary>Add field to this client</summary>
+                <div class="extra-field-grid">
+                  <input id="extra-label" type="text" placeholder="Label">
+                  <input id="extra-value" type="text" placeholder="Value (URL or password ID)">
+                  <select id="extra-task"></select>
+                  <button id="add-extra" class="btn success" type="button">Add Field</button>
+                  <button id="remove-extra" class="btn warning" type="button">Remove Selected</button>
+                </div>
+                <table class="link-table compact">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Label</th>
+                      <th>Task</th>
+                      <th>Value</th>
+                    </tr>
+                  </thead>
+                  <tbody id="extra-links-body"></tbody>
+                </table>
+              </details>
+            </section>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" data-view="script-builders">
+        <div class="builder-header">
+          <div class="builder-title-row">
+            <h2>Script Builder:</h2>
+            <select id="builder-selector" aria-label="Script Builder"></select>
+          </div>
+        </div>
+
+        <div class="builder-grid">
+          <article class="panel builder-form">
+            <div id="user-term-builder" class="builder-fields">
+              <h3>User Termination</h3>
+              <div class="form-grid">
+                <label>Client
+                  <div class="autocomplete" data-autocomplete="term-client">
+                    <input id="term-client" type="text" autocomplete="off">
+                    <div class="suggestions" role="listbox" aria-label="Script builder client suggestions"></div>
+                  </div>
+                </label>
+                <label>Disabled Users OU<input id="term-disabled-ou" type="text"></label>
+                <label>User lookup<input id="term-user-lookup" type="text"></label>
+                <label>Ticket number<input id="term-ticket" type="text"></label>
+                <label>Groups to remove<input id="term-groups" type="text"></label>
+                <label>Full Access delegates<textarea id="term-full-access"></textarea></label>
+                <label>Send As delegates<textarea id="term-send-as"></textarea></label>
+                <label>Send on Behalf delegates<textarea id="term-send-on-behalf"></textarea></label>
+              </div>
+              <h3>Termination Options</h3>
+              <div class="option-grid">
+                <label><input class="enter-toggle" id="term-convert-shared" type="checkbox"> Convert to shared mailbox</label>
+                <label><input class="enter-toggle" id="term-hide-gal" type="checkbox"> Hide from GAL</label>
+                <label><input class="enter-toggle" id="term-sent-copy" type="checkbox"> Enable sent item copy</label>
+                <label><input class="enter-toggle" id="term-run-adsync" type="checkbox"> Run AD sync</label>
+                <label><input class="enter-toggle" id="term-dry-run" type="checkbox"> Dry run</label>
+                <label><input class="enter-toggle" id="term-force" type="checkbox"> Force</label>
+                <label><input class="enter-toggle" id="term-skip-verified" type="checkbox"> Skip if Verified</label>
+                <label>Poll seconds<input id="term-poll-seconds" type="number" min="1" value="10"></label>
+                <label>Poll attempts<input id="term-poll-attempts" type="number" min="1" value="40"></label>
+              </div>
+            </div>
+
+            <div id="user-lockdown-builder" class="builder-fields" hidden>
+              <h3>User Lockdown</h3>
+              <div class="form-grid">
+                <label>Client
+                  <div class="autocomplete" data-autocomplete="lockdown-client">
+                    <input id="lockdown-client" type="text" autocomplete="off">
+                    <div class="suggestions" role="listbox" aria-label="Lockdown builder client suggestions"></div>
+                  </div>
+                </label>
+                <label>User lookup<input id="lockdown-user-lookup" type="text" placeholder="sAMAccountName, UPN, email, or name"></label>
+                <label>Ticket number<input id="lockdown-ticket" type="text"></label>
+              </div>
+              <h3>Lockdown Options</h3>
+              <div class="option-grid">
+                <label><input class="enter-toggle" id="lockdown-run-adsync" type="checkbox"> Run AD sync</label>
+                <label><input class="enter-toggle" id="lockdown-check-email-rules" type="checkbox"> Check email rules</label>
+                <label><input class="enter-toggle" id="lockdown-dry-run" type="checkbox"> Dry run</label>
+                <label><input class="enter-toggle" id="lockdown-force" type="checkbox"> Force</label>
+              </div>
+              <p class="hint">The generated PS1 revokes cloud sessions, audits MFA, resets re-registration, disables AD, rotates the password twice, syncs, disables the cloud account, and optionally inspects mailbox rules.</p>
+            </div>
+
+            <div id="user-new-builder" class="builder-fields" hidden>
+              <h3>User New</h3>
+              <div class="form-grid">
+                <label>Client
+                  <div class="autocomplete" data-autocomplete="new-client">
+                    <input id="new-client" type="text" autocomplete="off">
+                    <div class="suggestions" role="listbox" aria-label="New user builder client suggestions"></div>
+                  </div>
+                </label>
+                <label>First name<input id="new-first-name" type="text"></label>
+                <label>Last name<input id="new-last-name" type="text"></label>
+                <label>Copy-after user (optional)<input id="new-copy-after" type="text"></label>
+                <label>sAMAccountName override<input id="new-sam" type="text"></label>
+                <label>UPN override<input id="new-upn" type="text"></label>
+                <label>Target OU override<input id="new-target-ou" type="text"></label>
+                <label>Title<input id="new-title" type="text"></label>
+                <label>Department<input id="new-department" type="text"></label>
+                <label>Description<input id="new-description" type="text"></label>
+                <label>Manager<input id="new-manager" type="text" placeholder="UPN, sAMAccountName, or name"></label>
+                <label>Mapped drive letters<input id="new-mapped-drives" type="text" placeholder="P, S, X"></label>
+              </div>
+              <h3>New User Options</h3>
+              <div class="option-grid">
+                <label><input class="enter-toggle" id="new-run-adsync" type="checkbox"> Run AD sync</label>
+                <label><input class="enter-toggle" id="new-must-change" type="checkbox"> User must change password at next logon</label>
+                <label><input class="enter-toggle" id="new-dry-run" type="checkbox"> Dry run</label>
+                <label><input class="enter-toggle" id="new-force" type="checkbox"> Force</label>
+                <label><input class="enter-toggle" id="new-resume-existing" type="checkbox"> Resume existing user</label>
+                <label>Resume user lookup<input id="new-resume-lookup" type="text" placeholder="sAMAccountName, UPN, or name"></label>
+                <label>Poll seconds<input id="new-poll-seconds" type="number" min="1" value="5"></label>
+                <label>Poll attempts<input id="new-poll-attempts" type="number" min="1" value="100"></label>
+              </div>
+            </div>
+
+            <h3>Actions</h3>
+            <div class="button-grid">
+              <button id="generate-preview" class="btn primary" type="button">Generate Preview</button>
+              <button id="copy-script" class="btn success" type="button">Copy Script</button>
+              <button id="save-script" class="btn warning" type="button">Save PS1</button>
+              <button id="open-template" class="btn ghost" type="button">Open Template</button>
+            </div>
+            <p id="builder-status" class="hint">Fill out fields, then generate or copy the script.</p>
+          </article>
+
+          <article class="panel command-preview">
+            <h3>Script Preview</h3>
+            <pre class="script-preview"><code id="command-preview"># Generated script preview will appear here.</code></pre>
+          </article>
+
+          <article class="panel log-panel">
+            <h3>Status / Output</h3>
+            <pre id="log-output"></pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" data-view="settings">
+        <article class="panel settings-panel">
+          <h2>Settings</h2>
+          <p class="hint">Theme changes are saved to the runtime config.</p>
+          <label>Visual Theme
+            <select id="theme-choice">
+              <option value="command">Command Center Dark</option>
+              <option value="midnight">Midnight Blue</option>
+              <option value="ember">Ember Terminal</option>
+              <option value="aurora">Aurora Ops</option>
+              <option value="matrix">Matrix Green</option>
+              <option value="violet">Violet Desk</option>
+              <option value="steel">Steel Blue</option>
+              <option value="rose">Rose Console</option>
+            </select>
+          </label>
+          <label>Interface Style
+            <select id="style-choice">
+              <option value="standard">Standard</option>
+              <option value="compact">Compact</option>
+              <option value="soft">Soft</option>
+              <option value="squared">Squared</option>
+            </select>
+          </label>
+          <div class="form-actions">
+            <button id="settings-open-config" class="btn ghost" type="button">Open Config</button>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="status-bar">
+      <span id="status-text">Select a client. Task is optional.</span>
+    </footer>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
