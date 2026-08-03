@@ -8,6 +8,9 @@
 #ifndef OutputDir
   #define OutputDir "."
 #endif
+#ifndef IncludeHotkeyHelper
+  #define IncludeHotkeyHelper 1
+#endif
 
 [Setup]
 AppId={{A45D4255-9578-4E79-9E14-FD13CAAB56BC}
@@ -37,8 +40,12 @@ Name: "{group}\Stuff Opener"; Filename: "{app}\StuffOpener.exe"; WorkingDir: "{a
 Name: "{autodesktop}\Stuff Opener"; Filename: "{app}\StuffOpener.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Registry]
+#if IncludeHotkeyHelper
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "StuffOpenerHotkey"; ValueData: """{app}\stuff-opener-hotkey.exe"""; Flags: uninsdeletevalue
+#endif
 
 [Run]
+#if IncludeHotkeyHelper
 Filename: "{app}\stuff-opener-hotkey.exe"; Description: "Start hotkey helper"; Flags: nowait postinstall skipifsilent
+#endif
 Filename: "{app}\StuffOpener.exe"; Description: "Launch Stuff Opener"; Flags: nowait postinstall skipifsilent unchecked

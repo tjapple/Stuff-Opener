@@ -3,5 +3,8 @@ Stuff Opener - Quick Install
 1) Double-click StuffOpener-Setup-<version>.exe and finish setup.
 2) If Stuff Opener shows a startup error about Edge/WebView2, install the Microsoft Edge WebView2 Runtime.
 3) Open Stuff Opener from Start Menu.
-4) Use Alt+O for quick open/focus (if needed, click "Enable hotkey" once).
+4) Builds that include the hotkey helper support Alt+O for quick open/focus.
 5) Edit config with "Open Config" in the app.
+
+Installed app: %LOCALAPPDATA%\StuffOpener
+Uninstall: Windows Settings > Apps > Installed apps > Stuff Opener

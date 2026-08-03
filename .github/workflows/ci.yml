@@ -23,3 +23,33 @@ jobs:
         run: python -m compileall -q app.py core script_builders ui_web
       - name: Run configuration tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  windows-packaging-preflight:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v9
+      - name: Parse PowerShell source
+        shell: powershell
+        run: |
+          $parseErrors = @()
+          Get-ChildItem -Path . -Recurse -File -Filter *.ps1 | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            )
+            if ($errors) {
+              $parseErrors += $errors
+            }
+          }
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | Format-List
+            exit 1
+          }
+      - name: Check packaging prerequisites without optional build tools
+        shell: cmd
+        run: packaging\build-package.cmd -PreflightOnly -SkipHotkeyHelper -SkipInstaller

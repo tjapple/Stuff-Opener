@@ -1,3 +1,14 @@
+<#
+.SYNOPSIS
+Builds the portable application bundle and, by default, a Windows installer.
+
+.DESCRIPTION
+This is a maintainer command. End users should install a published
+StuffOpener-Setup-<version>.exe instead of running this script.
+
+Use build-package.cmd from PowerShell or Command Prompt to avoid changing the
+machine's PowerShell execution policy.
+#>
 param(
     [string]$Version = "0.1.0",
 
@@ -5,7 +16,19 @@ param(
 
     [switch]$AllowPrivateConfig,
 
-    [switch]$SkipInstaller
+    [switch]$SkipInstaller,
+
+    [switch]$SkipHotkeyHelper,
+
+    [switch]$PreflightOnly,
+
+    [string]$AutoHotkeyRoot = "",
+
+    [string]$AhkBasePath = "",
+
+    [string]$Ahk2ExePath = "",
+
+    [string]$InnoSetupPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -85,36 +108,215 @@ function Wait-ForFile {
     return $false
 }
 
-function Resolve-AhkBaseExe {
-    $candidates = @(
-        (Join-Path $env:LOCALAPPDATA "Programs\AutoHotkey\v2\Compiler\AutoHotkey64.exe"),
-        (Join-Path $env:LOCALAPPDATA "Programs\AutoHotkey\v2\Compiler\AutoHotkey32.exe"),
-        "C:\Program Files\AutoHotkey\v2\Compiler\AutoHotkey64.exe",
-        "C:\Program Files\AutoHotkey\v2\Compiler\AutoHotkey32.exe",
-        "C:\Program Files (x86)\AutoHotkey\v2\Compiler\AutoHotkey64.exe",
-        "C:\Program Files (x86)\AutoHotkey\v2\Compiler\AutoHotkey32.exe",
+function Resolve-RequiredFileOverride {
+    param(
+        [string]$Path,
 
-        # Fallbacks, less ideal:
-        (Join-Path $env:LOCALAPPDATA "Programs\AutoHotkey\v2\AutoHotkey64.exe"),
-        (Join-Path $env:LOCALAPPDATA "Programs\AutoHotkey\v2\AutoHotkey32.exe"),
-        "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe",
-        "C:\Program Files\AutoHotkey\v2\AutoHotkey32.exe",
-        "C:\Program Files (x86)\AutoHotkey\v2\AutoHotkey64.exe",
-        "C:\Program Files (x86)\AutoHotkey\v2\AutoHotkey32.exe"
+        [Parameter(Mandatory = $true)]
+        [string]$Description
     )
 
-    foreach ($candidate in $candidates) {
-        if ($candidate -and (Test-Path $candidate)) {
-            return (Resolve-Path $candidate).Path
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+
+    if (!(Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "$Description was not found at the supplied path: $Path"
+    }
+
+    return (Resolve-Path -LiteralPath $Path).Path
+}
+
+function Get-AutoHotkeyInstallRoots {
+    param(
+        [string]$AdditionalRoot = ""
+    )
+
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    if (![string]::IsNullOrWhiteSpace($AdditionalRoot)) {
+        [void]$candidates.Add($AdditionalRoot)
+    }
+
+    if ($env:LOCALAPPDATA) {
+        [void]$candidates.Add((Join-Path $env:LOCALAPPDATA "Programs\AutoHotkey"))
+    }
+    [void]$candidates.Add("C:\Program Files\AutoHotkey")
+    [void]$candidates.Add("C:\Program Files (x86)\AutoHotkey")
+
+    $registryPaths = @(
+        "HKCU:\Software\AutoHotkey",
+        "HKLM:\Software\AutoHotkey",
+        "HKLM:\Software\WOW6432Node\AutoHotkey"
+    )
+    foreach ($registryPath in $registryPaths) {
+        try {
+            $installDir = (Get-ItemProperty -LiteralPath $registryPath -ErrorAction Stop).InstallDir
+            if (![string]::IsNullOrWhiteSpace($installDir)) {
+                [void]$candidates.Add($installDir)
+            }
+        }
+        catch {
+            # AutoHotkey does not register every install type or scope.
         }
     }
 
-    throw "AutoHotkey v2 compiler base executable was not found. Reinstall AutoHotkey v2 and make sure the compiler components are installed."
+    $seen = @{}
+    foreach ($candidate in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($candidate) -or !(Test-Path -LiteralPath $candidate -PathType Container)) {
+            continue
+        }
+
+        $resolved = (Resolve-Path -LiteralPath $candidate).Path
+        $key = $resolved.ToLowerInvariant()
+        if (!$seen.ContainsKey($key)) {
+            $seen[$key] = $true
+            $resolved
+        }
+    }
+}
+
+function Get-AutoHotkeyV2Directories {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$InstallRoot
+    )
+
+    $directories = @()
+    $currentV2 = Join-Path $InstallRoot "v2"
+    if (Test-Path -LiteralPath $currentV2 -PathType Container) {
+        $directories += Get-Item -LiteralPath $currentV2
+    }
+
+    $directories += @(
+        Get-ChildItem -LiteralPath $InstallRoot -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^v2\.\d+(?:\.\d+){0,2}$' } |
+            Sort-Object LastWriteTime -Descending
+    )
+
+    $directories
+}
+
+function Resolve-AhkBaseExe {
+    param(
+        [string[]]$InstallRoots,
+        [string]$OverridePath = ""
+    )
+
+    $override = Resolve-RequiredFileOverride -Path $OverridePath -Description "AutoHotkey v2 base executable"
+    if ($override) {
+        return $override
+    }
+
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    foreach ($installRoot in $InstallRoots) {
+        foreach ($versionDir in (Get-AutoHotkeyV2Directories -InstallRoot $installRoot)) {
+            [void]$candidates.Add((Join-Path $versionDir.FullName "AutoHotkey64.exe"))
+            [void]$candidates.Add((Join-Path $versionDir.FullName "AutoHotkey32.exe"))
+            [void]$candidates.Add((Join-Path $versionDir.FullName "Compiler\AutoHotkey64.exe"))
+            [void]$candidates.Add((Join-Path $versionDir.FullName "Compiler\AutoHotkey32.exe"))
+        }
+
+        # Portable layouts sometimes place the runtime directly in the root.
+        [void]$candidates.Add((Join-Path $installRoot "AutoHotkey64.exe"))
+        [void]$candidates.Add((Join-Path $installRoot "AutoHotkey32.exe"))
+    }
+
+    $resolved = Resolve-ToolPath -Candidates $candidates
+    if ($resolved) {
+        return $resolved
+    }
+
+    $pathCommand = Get-Command AutoHotkey64.exe, AutoHotkey32.exe -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($pathCommand -and $pathCommand.Source) {
+        return $pathCommand.Source
+    }
+
+    $rootSummary = if ($InstallRoots.Count -gt 0) { $InstallRoots -join "`n  " } else { "(none detected)" }
+    throw @"
+AutoHotkey v2 runtime executable was not found.
+
+Detected install roots:
+  $rootSummary
+
+Install the official AutoHotkey v2 desktop release, provide a custom path with
+-AhkBasePath, or build without the optional global hotkey using
+-SkipHotkeyHelper.
+"@
+}
+
+function Resolve-Ahk2Exe {
+    param(
+        [string[]]$InstallRoots,
+        [string]$OverridePath = ""
+    )
+
+    $override = Resolve-RequiredFileOverride -Path $OverridePath -Description "Ahk2Exe compiler"
+    if ($override) {
+        return $override
+    }
+
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    foreach ($installRoot in $InstallRoots) {
+        [void]$candidates.Add((Join-Path $installRoot "Compiler\Ahk2Exe.exe"))
+        foreach ($versionDir in (Get-AutoHotkeyV2Directories -InstallRoot $installRoot)) {
+            [void]$candidates.Add((Join-Path $versionDir.FullName "Compiler\Ahk2Exe.exe"))
+        }
+    }
+
+    $resolved = Resolve-ToolPath -Candidates $candidates
+    if ($resolved) {
+        return $resolved
+    }
+
+    $pathCommand = Get-Command Ahk2Exe.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($pathCommand -and $pathCommand.Source) {
+        return $pathCommand.Source
+    }
+
+    throw @"
+Ahk2Exe was not found. The AutoHotkey runtime and compiler are separate components.
+
+Open "AutoHotkey Dash" from the Start menu, choose "Compile", and approve the
+compiler download. Then rerun this command. You can also provide -Ahk2ExePath
+or build without the optional global hotkey using -SkipHotkeyHelper.
+"@
+}
+
+function Resolve-InnoSetupCompiler {
+    param(
+        [string]$OverridePath = ""
+    )
+
+    $override = Resolve-RequiredFileOverride -Path $OverridePath -Description "Inno Setup compiler"
+    if ($override) {
+        return $override
+    }
+
+    $resolved = Resolve-ToolPath -Candidates @(
+        (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
+        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+        "C:\Program Files\Inno Setup 6\ISCC.exe"
+    )
+    if ($resolved) {
+        return $resolved
+    }
+
+    throw @"
+Inno Setup 6 compiler (ISCC.exe) was not found.
+
+Install Inno Setup 6, provide a custom path with -InnoSetupPath, or use
+-SkipInstaller when you only need the unpackaged application bundle.
+"@
 }
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $appEntry = Join-Path $projectRoot "app.py"
 $exampleConfigPath = Join-Path $projectRoot "config.example.json"
+
+if ([string]::IsNullOrWhiteSpace($Version) -or $Version -notmatch '^[0-9A-Za-z][0-9A-Za-z.+-]*$') {
+    throw "Version must contain only letters, numbers, dots, plus signs, and hyphens."
+}
 
 if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
     $configCandidate = $exampleConfigPath
@@ -184,12 +386,42 @@ $pyInstallerSpec = Join-Path $releaseRoot "pyinstaller-spec"
 $installerOut = Join-Path $releaseRoot "installer"
 
 $uvExe = Resolve-UvCommand
-$ahkBaseExe = Resolve-AhkBaseExe
+$autoHotkeyRoots = @(Get-AutoHotkeyInstallRoots -AdditionalRoot $AutoHotkeyRoot)
+$ahkBaseExe = $null
+$ahk2exe = $null
+if (!$SkipHotkeyHelper) {
+    $ahkBaseExe = Resolve-AhkBaseExe -InstallRoots $autoHotkeyRoots -OverridePath $AhkBasePath
+    $ahk2exe = Resolve-Ahk2Exe -InstallRoots $autoHotkeyRoots -OverridePath $Ahk2ExePath
+}
+
+$iscc = $null
+if (!$SkipInstaller) {
+    $iscc = Resolve-InnoSetupCompiler -OverridePath $InnoSetupPath
+}
 
 Write-Host "Build mode: maintainer packaging pipeline."
 Write-Host "Config seed: $configMode ($configSource)"
+Write-Host "uv:          $uvExe"
+if ($SkipHotkeyHelper) {
+    Write-Host "Hotkey:      skipped"
+}
+else {
+    Write-Host "Ahk2Exe:     $ahk2exe"
+    Write-Host "AHK base:    $ahkBaseExe"
+}
+if ($SkipInstaller) {
+    Write-Host "Installer:   skipped"
+}
+else {
+    Write-Host "Inno Setup:  $iscc"
+}
 Write-Host "End users should only run StuffOpener-Setup-<version>.exe."
 Write-Host ""
+
+if ($PreflightOnly) {
+    Write-Host "Preflight complete. No build output was changed."
+    exit 0
+}
 
 if (Test-Path $releaseRoot) {
     Remove-Item -Recurse -Force $releaseRoot
@@ -252,58 +484,49 @@ Get-ChildItem -Path $bundleDir -Recurse -Directory -Filter "__pycache__" -ErrorA
 Get-ChildItem -Path $bundleDir -Recurse -File -Include "*.pyc", "*.pyo" -ErrorAction SilentlyContinue |
     Remove-Item -Force
 
-$ahk2exe = Resolve-ToolPath @(
-    (Join-Path $env:LOCALAPPDATA "Programs\AutoHotkey\v2\Compiler\Ahk2Exe.exe"),
-    (Join-Path $env:LOCALAPPDATA "Programs\AutoHotkey\Compiler\Ahk2Exe.exe"),
-    "C:\Program Files\AutoHotkey\v2\Compiler\Ahk2Exe.exe",
-    "C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe",
-    "C:\Program Files\AutoHotkey\Ahk2Exe.exe",
-    "C:\Program Files (x86)\AutoHotkey\v2\Compiler\Ahk2Exe.exe",
-    "C:\Program Files (x86)\AutoHotkey\Compiler\Ahk2Exe.exe"
-)
-
-if (!$ahk2exe) {
-    throw "Ahk2Exe.exe was not found. Install AutoHotkey v2 with compiler on the build machine."
-}
 $hotkeyExeOut = Join-Path $bundleDir "stuff-opener-hotkey.exe"
+if (!$SkipHotkeyHelper) {
+    if (Test-Path $hotkeyExeOut) {
+        Remove-Item -Force $hotkeyExeOut
+    }
 
-if (Test-Path $hotkeyExeOut) {
-    Remove-Item -Force $hotkeyExeOut
+    Write-Host "Compiling hotkey helper executable..."
+    Write-Host "Ahk2Exe:  $ahk2exe"
+    Write-Host "AHK base: $ahkBaseExe"
+    Write-Host "Input:    $hotkeyScript"
+    Write-Host "Output:   $hotkeyExeOut"
+
+    $ahkArgs = @(
+        "/in", $hotkeyScript,
+        "/out", $hotkeyExeOut,
+        "/base", $ahkBaseExe,
+        "/icon", $iconPath
+    )
+
+    $ahkStartArgs = $ahkArgs | ForEach-Object { ConvertTo-ProcessArgument $_ }
+    $ahkProcess = Start-Process -FilePath $ahk2exe -ArgumentList $ahkStartArgs -Wait -PassThru
+
+    $ahkExitCode = $ahkProcess.ExitCode
+
+    if ($null -ne $ahkExitCode -and $ahkExitCode -ne 0) {
+        throw "Ahk2Exe failed with exit code $ahkExitCode."
+    }
+
+    if (!(Wait-ForFile -Path $hotkeyExeOut -TimeoutSeconds 20)) {
+        Write-Host ""
+        Write-Host "Expected hotkey helper was not created at:"
+        Write-Host "  $hotkeyExeOut"
+        Write-Host ""
+        Write-Host "Searching release folder for any generated hotkey exe..."
+        Get-ChildItem $releaseRoot -Recurse -Filter "*hotkey*.exe" -ErrorAction SilentlyContinue |
+            Select-Object FullName, Length, LastWriteTime |
+            Format-Table -AutoSize
+
+        throw "Hotkey helper compile failed. Ahk2Exe returned success, but the output exe was not found."
+    }
 }
-
-Write-Host "Compiling hotkey helper executable..."
-Write-Host "Ahk2Exe:  $ahk2exe"
-Write-Host "AHK base: $ahkBaseExe"
-Write-Host "Input:    $hotkeyScript"
-Write-Host "Output:   $hotkeyExeOut"
-
-$ahkArgs = @(
-    "/in", $hotkeyScript,
-    "/out", $hotkeyExeOut,
-    "/base", $ahkBaseExe,
-    "/icon", $iconPath
-)
-
-$ahkStartArgs = $ahkArgs | ForEach-Object { ConvertTo-ProcessArgument $_ }
-$ahkProcess = Start-Process -FilePath $ahk2exe -ArgumentList $ahkStartArgs -Wait -PassThru
-
-$ahkExitCode = $ahkProcess.ExitCode
-
-if ($null -ne $ahkExitCode -and $ahkExitCode -ne 0) {
-    throw "Ahk2Exe failed with exit code $ahkExitCode."
-}
-
-if (!(Wait-ForFile -Path $hotkeyExeOut -TimeoutSeconds 20)) {
-    Write-Host ""
-    Write-Host "Expected hotkey helper was not created at:"
-    Write-Host "  $hotkeyExeOut"
-    Write-Host ""
-    Write-Host "Searching release folder for any generated hotkey exe..."
-    Get-ChildItem $releaseRoot -Recurse -Filter "*hotkey*.exe" -ErrorAction SilentlyContinue |
-        Select-Object FullName, Length, LastWriteTime |
-        Format-Table -AutoSize
-
-    throw "Hotkey helper compile failed. Ahk2Exe returned success, but the output exe was not found."
+else {
+    Write-Host "Skipping compiled hotkey helper. The .ahk source remains in the bundle for users who already have AutoHotkey v2."
 }
 
 if ($SkipInstaller) {
@@ -317,21 +540,13 @@ if (!(Test-Path $innoScript)) {
     throw "Missing Inno Setup script: $innoScript"
 }
 
-$iscc = Resolve-ToolPath @(
-    (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
-    "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
-    "C:\Program Files\Inno Setup 6\ISCC.exe"
-)
-
-if (!$iscc) {
-    throw "Inno Setup compiler (ISCC.exe) was not found."
-}
-
 Write-Host "Compiling installer..."
+$includeHotkeyHelper = if ($SkipHotkeyHelper) { "0" } else { "1" }
 & $iscc `
     "/DAppVersion=$Version" `
     "/DSourceDir=$bundleDir" `
     "/DOutputDir=$installerOut" `
+    "/DIncludeHotkeyHelper=$includeHotkeyHelper" `
     $innoScript
 
 if ($LASTEXITCODE -ne 0) {

@@ -23,7 +23,15 @@ This repository contains fictional demonstration data only. Real organization, c
 - AutoHotkey v2 hotkey helper
 - PyInstaller and Inno Setup packaging
 
-## Run from source
+## Install Stuff Opener
+
+For a normal installation, download `StuffOpener-Setup-<version>.exe` from the repository's GitHub Releases page and run it. The per-user installer does not require administrator access.
+
+Setup installs the app under `%LOCALAPPDATA%\StuffOpener`, adds a Start menu shortcut, and optionally creates a desktop shortcut. Published portfolio builds are not code-signed, so Windows may show a reputation warning; only run an installer downloaded from this repository's Releases page.
+
+Running `run.cmd` from a clone is a development launch. It does **not** install the app or create shortcuts.
+
+## Run temporarily from source
 
 Install [uv](https://docs.astral.sh/uv/), then run:
 
@@ -32,7 +40,7 @@ uv sync --locked
 .\run.cmd
 ```
 
-On first launch, the app copies `config.example.json` to the per-user runtime location. The example contains only fictional values.
+On first launch, the app copies `config.example.json` to the per-user runtime location. The example contains only fictional values. Closing this development launch leaves no installed application behind; rerun `run.cmd` to start it again.
 
 ## Configuration
 
@@ -84,24 +92,44 @@ The PowerShell tests use mocks and fixtures; they do not connect to a live Activ
 
 ## Build a Windows installer
 
+This section is for maintainers building release artifacts, not for end users installing the app.
+
 Build prerequisites:
 
-- uv
-- AutoHotkey v2 with Ahk2Exe
-- Inno Setup 6
+- [uv](https://docs.astral.sh/uv/)
+- [Inno Setup 6](https://jrsoftware.org/isdl.php)
+- Optional hotkey build: [AutoHotkey v2](https://www.autohotkey.com/) and Ahk2Exe
+
+Ahk2Exe is a separate compiler component. After installing AutoHotkey v2, open **AutoHotkey Dash** from the Start menu, choose **Compile**, and approve its compiler download.
+
+Run the fast preflight first. Use the `.cmd` wrapper so no permanent PowerShell execution-policy change is needed:
+
+```powershell
+.\packaging\build-package.cmd -PreflightOnly
+```
 
 The safe public build packages `config.example.json` automatically:
 
 ```powershell
-.\packaging\build-package.ps1 -Version "0.1.0"
+.\packaging\build-package.cmd -Version "0.1.0"
 ```
 
-Output is written under `dist\release\`, which is ignored by Git.
+The installer is written to `dist\release\installer\StuffOpener-Setup-0.1.0.exe`. Run that file to verify the actual install, Start menu shortcut, and uninstall flow. Everything under `dist\release\` is generated and ignored by Git.
+
+To build without installing AutoHotkey or Ahk2Exe, omit the compiled global hotkey helper:
+
+```powershell
+.\packaging\build-package.cmd -Version "0.1.0" -SkipHotkeyHelper
+```
+
+That installer still includes the `.ahk` source for users who already have AutoHotkey v2, but it does not install or automatically start a compiled hotkey executable.
+
+The preflight recognizes per-user, system-wide, registry-registered, `v2`, and versioned AutoHotkey installations. Nonstandard portable installations can be supplied with `-AutoHotkeyRoot`, `-AhkBasePath`, `-Ahk2ExePath`, or `-InnoSetupPath`.
 
 A private configuration can be embedded only through an explicit override:
 
 ```powershell
-.\packaging\build-package.ps1 `
+.\packaging\build-package.cmd `
   -Version "0.1.0-internal" `
   -ConfigPath .\config.local.json `
   -AllowPrivateConfig
