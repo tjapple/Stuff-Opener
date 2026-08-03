@@ -1,5 +1,5 @@
 # Stuff Opener
-Stuff Opener is a Windows desktop launcher for repeatable IT support workflows. It combines client and task selection, validated browser links, and self-contained PowerShell script builders in one local-first interface.
+Stuff Opener is a Windows desktop launcher for repeatable IT support workflows. It combines client and task selection, validated browser links, and self-contained PowerShell script builders in one local-first interface. 
 
 This repository contains fictional demonstration data only. Real organization, customer, credential, tenant, and deep-link data belongs in a local ignored configuration file and must never be committed or attached to a public release.
 
@@ -19,6 +19,12 @@ Since everything can be tweaked directly in the config file, this app could be u
 - Optional global hotkey helper and Windows installer packaging.
 - Per-user runtime configuration stored outside the repository.
 
+## Scripts
+This is the heart of the functionality. I've built this with 3 user lifecycle management automations: User Creation, User Termination, and User Lockdown (in situations of security compromise where fast responses are critical) - though more could be added as needed. The intention was to create scripts that could be adjusted on the fly by the operator, instead of running complete end-to-end automations and hoping that nothing breaks. 
+
+These automations significantly reduce time and human error, as well as aid in situations where fast response times are critical for security. The base scripts were designed around hybrid environments with an on-prem sync to M365, though customizations can be easily made. 
+
+The scripts were designed with shared functionality in mind. Additional automations can pull from the Shared folder to re-use pre-built functions, ensuring faster and more consistent builds.
 
 
 ## Technology
