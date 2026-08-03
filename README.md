@@ -1,8 +1,13 @@
 # Stuff Opener
-
 Stuff Opener is a Windows desktop launcher for repeatable IT support workflows. It combines client and task selection, validated browser links, and self-contained PowerShell script builders in one local-first interface.
 
 This repository contains fictional demonstration data only. Real organization, customer, credential, tenant, and deep-link data belongs in a local ignored configuration file and must never be committed or attached to a public release.
+
+Since everything can be tweaked directly in the config file, this app could be used for all sorts of different things - not just IT workflows. Think of it as a platform to launch saved URLs or programs, bundle tasks/documents into task packages, and assemble custom scripts - all from the click of a few buttons. Hotkeys are built-in and customizable, enabling friction-free workflows. 
+
+<img width="1261" height="810" alt="image" src="https://github.com/user-attachments/assets/b28ab3d3-9ac5-4c9e-bc86-4a6ea8405c9a" />
+<img width="1843" height="915" alt="image" src="https://github.com/user-attachments/assets/6756525d-07d7-4bf5-9c31-3591e278a3f5" />
+
 
 ## Features
 
@@ -13,6 +18,8 @@ This repository contains fictional demonstration data only. Real organization, c
 - Self-contained PowerShell builders for common user lifecycle workflows.
 - Optional global hotkey helper and Windows installer packaging.
 - Per-user runtime configuration stored outside the repository.
+
+
 
 ## Technology
 
@@ -72,7 +79,10 @@ In the app:
 - `Ctrl+L` launches workflow links and selected checklist items.
 - `Ctrl+Shift+L` launches selected checklist items only.
 
-The optional AutoHotkey helper uses `Alt+O` to focus or launch Stuff Opener.
+The optional AutoHotkey helper uses `Alt+O` to focus or launch Stuff Opener. `Alt+C` will snap focus to the client dropdown (start of the workflow). 
+
+# Development
+- Please clone this repo and do whatever you'd like with it. Make it your own. It is highly customizable. It also includes packaging flows so you can clone this, customize it, and build an installer file. 
 
 ## Tests
 
@@ -146,7 +156,3 @@ That installer contains the selected configuration in recoverable form. It is fo
 - Public release builds use fictional data unless a maintainer deliberately overrides the safety check.
 
 See [SECURITY.md](SECURITY.md) for reporting and data-handling guidance.
-
-## Project status
-
-Stuff Opener is a portfolio project and practical desktop automation tool. Test integrations against a lab environment before using generated scripts in production.
